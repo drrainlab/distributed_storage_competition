@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"karma8/internal/service"
 	"log"
+	"strings"
+	"time"
 )
 
 func main() {
@@ -21,7 +23,11 @@ func main() {
 
 	fmt.Println(objectStorage.Nodes())
 
-	if err := objectStorage.Store(context.Background(), "test", 6, nil); err != nil {
+	strR := strings.NewReader("aabbccddeefff")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*1)
+	defer cancel()
+	if err := objectStorage.Store(ctx, "test", uint64(strR.Len()), strR); err != nil {
 		log.Printf("error storing object: %v\n", err)
 	}
 

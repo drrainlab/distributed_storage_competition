@@ -20,14 +20,16 @@ func (s *StorageStat) meanCapacity() float64 {
 	return 1 - float64(s.used)/float64(s.total)
 }
 
+// decrease storage capacity
 func (s *StorageStat) decrease(size uint64) {
 	s.Lock()
-	s.used -= size
+	s.used += size
 	s.Unlock()
 }
 
+// increase storage capacity
 func (s *StorageStat) increase(size uint64) {
 	s.Lock()
-	s.used += size
+	s.used -= size
 	s.Unlock()
 }

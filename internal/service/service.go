@@ -1,11 +1,13 @@
 package service
 
 import (
+	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"karma8/internal/storage"
-	"strconv"
+	"log"
 	"sync"
 )
 
@@ -56,22 +58,37 @@ func (s *ObjectStorageService) Nodes() (capacity uint64, cnt int) {
 	return
 }
 
-func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint64, object io.Reader) error {
-
+// divide size of file to equally parts, returns file parts objects slice, each index of part belongs to
+// corresponding index of node
+func (s *ObjectStorageService) prepareParts(size uint64) ([]*storage.FilePart, error) {
 	// get nodes number firstly, it can be expanded later
 	cap, n := s.Nodes()
 
 	if size > cap {
-		return ErrNotEnoughSpace
+		return nil, ErrNotEnoughSpace
 	}
 
 	var parts []*storage.FilePart // write will be sequential from beginning, to each node
 
 	partSize := uint64(float64(size) / float64(n))
+	residue := size % partSize
+
+	var (
+		mostCapacity    uint64
+		mostCapacityIdx int
+	)
 
 	for i := 0; i < n; i++ {
+		// get node capacity
 		c := s.nodes[i].Capacity()
+
 		var part *storage.FilePart
+
+		if c >= mostCapacity {
+			mostCapacity = c
+			mostCapacityIdx = i
+		}
+
 		if c >= partSize {
 			part = storage.NewFilePart(partSize)
 		} else {
@@ -80,25 +97,58 @@ func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint
 		// try to allocate disk space on current node
 		// on writing failure this allocation will be released
 		if err := s.nodes[i].Alloc(part.ID.String(), part.Size()); err != nil {
-			return err
+			return nil, err
 		}
 		parts = append(parts, part)
 	}
 
+	// store residue in store with most space if not equally parted
+	if residue > 0 {
+		parts[mostCapacityIdx].AdjustSize(residue)
+		s.nodes[mostCapacityIdx].Alloc(parts[mostCapacityIdx].ID.String(), residue)
+	}
+
+	return parts, nil
+}
+
+func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint64, object io.Reader) error {
+
+	parts, err := s.prepareParts(size)
+	if err != nil {
+		return err
+	}
+
+	// capcap, nn := s.Nodes()
+	// fmt.Println("nodes after alloc: ", capcap, nn)
+
+	reader := bufio.NewReader(object)
+
 	for i := 0; i < len(parts); i++ {
 
+		// dispatch reader that sends data to belonging part data channel
 		go func(i int) {
 			rcv := parts[i].Receiver()
-			rcv <- []byte(strconv.Itoa(i))
-			parts[i].Finish()
+			for j := 0; j < int(parts[i].Size()); j++ {
+				b, err := reader.ReadByte()
+				// fmt.Println("read ", string(b), " from source", " part=", i, " size=", parts[i].Size())
+				if err != nil && !errors.Is(err, io.EOF) {
+					log.Printf("error reading object: %v\n", err)
+					return
+				}
+				rcv <- b
+			}
 		}(i)
 
+		// start writing data to current node
 		if err := s.nodes[i].Store(ctx, name, parts[i]); err != nil {
 			return err
 		}
 
-		result := <-parts[i].Watcher()
-		fmt.Println("result: ", result)
+		// waiting for nil on success or error
+		err := <-parts[i].Watcher()
+		if err != nil {
+			return err
+		}
 
 	}
 

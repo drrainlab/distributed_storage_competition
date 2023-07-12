@@ -24,8 +24,13 @@ type allocks struct {
 
 func (a *allocks) lock(id string, size uint64) {
 	a.Lock()
-	a.allocations[id] = size
-	a.Unlock()
+	defer a.Unlock()
+	_, ok := a.allocations[id]
+	if ok {
+		a.allocations[id] += size
+	} else {
+		a.allocations[id] = size
+	}
 }
 
 func (a *allocks) unlock(id string) {
@@ -107,21 +112,25 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 		for {
 			select {
 			case <-ctx.Done():
+				log.Printf("ctx finished: %s\n", ctx.Err())
 				part.err <- ctx.Err()
 				defer s.cleanFailed(path, part)
 				return
-			case chunk := <-part.data:
-				n, err := f.Write(chunk)
+			case <-part.completed:
+				close(part.data)
+				close(part.err)
+				return
+			case b := <-part.data:
+				fmt.Println("writing ", string(b), " to ", path)
+				_, err := f.Write([]byte{b})
 				if err != nil {
 					defer s.cleanFailed(path, part)
 					part.err <- err
 					return
 				}
-				part.count(uint64(n))
-			default:
-				if part.isTransferred {
-					close(part.err)
-					return
+				part.count(1)
+				if part.size == part.txBytesCnt {
+					part.Finish()
 				}
 			}
 		}
@@ -131,7 +140,14 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 }
 
 func (s *DiskStorage) Get(ctx context.Context, name string) (f io.Reader, err error) {
-	panic("not implemented") // TODO: Implement
+	path := s.buildPath(name)
+	// check if file exists
+	if _, err := os.Stat(path); !os.IsExist(err) {
+		return nil, ErrNotFound
+	}
+
+	return nil, nil
+
 }
 
 func (s *DiskStorage) Delete(ctx context.Context, name string) error {
