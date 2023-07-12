@@ -1,0 +1,24 @@
+package storage
+
+//go:generate mockgen -source=storage.go -destination=storage_mock.go -package=storage
+
+import (
+	"context"
+	"errors"
+	"io"
+)
+
+type Storage interface {
+	ID() string
+	Store(ctx context.Context, name string, part *FilePart) error
+	Get(ctx context.Context, name string) (f io.Reader, err error)
+	Delete(ctx context.Context, name string) error
+	Alloc(id string, size uint64) error // allocate disk space and store allocation by id
+	Capacity() uint64                   // total capacity in bytes
+}
+
+var (
+	ErrEmptyFile      = errors.New("empty file")
+	ErrNotEnoughSpace = errors.New("not enough space")
+	ErrAlreadyExist   = errors.New("file already exists")
+)

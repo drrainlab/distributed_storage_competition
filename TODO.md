@@ -1,0 +1,10 @@
+- server processing put/get requests
+- handlers 
+- on put: 
+  - initialize storage servers num = n with key(filename) object -> must be ready to accept stream
+  - split file into n chunks:
+    - read until size/n pos | parralel write to current storage writer
+    - dispatch chunk ready event to event bus ->  write record to DB (key, chunk num, chunk size, storage ID)
+    - rotate storage
+    - continue reading
+    - repeat until done
