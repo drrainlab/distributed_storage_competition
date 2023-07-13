@@ -2,45 +2,37 @@ package server
 
 import (
 	"context"
+	"errors"
 	"karma8/internal/server/handlers"
 	"log"
 	"net/http"
-	"time"
 )
 
 type Server struct {
-	server *http.Server
+	server  *http.Server
+	handler *handlers.Handler
 }
 
-func NewServer(addr string, storageServiceHandler *handlers.StorageService) *Server {
+func NewServer(addr string, h *handlers.Handler) *Server {
 	return &Server{
 		server: &http.Server{
-			Addr: addr,
-			// Handler: handlers.CreateRouter(storageServiceHandler),
+			Addr:    addr,
+			Handler: handlers.CreateRouter(h),
 		},
+		handler: h,
 	}
 }
 
-func (s *Server) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		log.Printf("server started at %s", s.server.Addr)
-		if err := s.server.ListenAndServe(); err != nil {
-			if err == http.ErrServerClosed {
-				log.Println("server stopped")
-				return
-			}
-			log.Printf("Serving error: %s", err.Error())
-		}
-	}()
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.handler.Shutdown()
+	return s.server.Shutdown(ctx)
+}
 
-	select {
-	case <-ctx.Done():
+func (s *Server) Run(ctx context.Context) {
+
+	log.Println("running server at ", s.server.Addr)
+	err := s.server.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalln("serve listener err", err)
 	}
-
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	err := s.server.Shutdown(ctx)
-	cancel()
-	return err
 }

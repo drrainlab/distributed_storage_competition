@@ -8,14 +8,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const apiPrefix = "/api/v1"
-
-func CreateRouter(s *StorageService) *mux.Router {
+func CreateRouter(h *Handler) *mux.Router {
 	router := mux.NewRouter()
 
-	api := router.PathPrefix(apiPrefix).Subrouter()
-	api.Methods(http.MethodPost).Path(filePath).HandlerFunc(s.UploadFile)
-	api.Methods(http.MethodGet).Path(filePath).HandlerFunc(s.GetFile)
+	api := router.PathPrefix("/api/v1").Subrouter()
+	api.Methods("POST").Path("/store").HandlerFunc(h.Store)
+	api.Methods("GET").Path("/download").HandlerFunc(h.Download)
 
 	router.Use(recoverMiddleware)
 
