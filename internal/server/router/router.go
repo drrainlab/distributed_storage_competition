@@ -1,6 +1,7 @@
-package handlers
+package router
 
 import (
+	"karma8/internal/server/handlers"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -8,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func CreateRouter(h *Handler) *mux.Router {
+func Create(h *handlers.Handler) *mux.Router {
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api/v1").Subrouter()

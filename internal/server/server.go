@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"karma8/internal/server/handlers"
+	"karma8/internal/server/router"
 	"log"
 	"net/http"
 )
@@ -17,7 +18,7 @@ func NewServer(addr string, h *handlers.Handler) *Server {
 	return &Server{
 		server: &http.Server{
 			Addr:    addr,
-			Handler: handlers.CreateRouter(h),
+			Handler: router.Create(h),
 		},
 		handler: h,
 	}
