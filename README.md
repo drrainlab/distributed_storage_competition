@@ -1,5 +1,10 @@
 ### Karma8 competition prject
 
+#### TODO
+
+- [ ] allocations release after failures
+- [ ] cleanup after tests
+
 #### API description
 
 Store file endpoint:
