@@ -173,5 +173,5 @@ func (s *DiskStorage) cleanFailed(path string, part *FilePart) {
 }
 
 func (s *DiskStorage) buildPath(name string) string {
-	return fmt.Sprintf("%s/%s", filepath.Dir(s.path)+"/"+s.id, name)
+	return fmt.Sprintf("./%s/%s", filepath.Dir(s.path)+"/"+s.id, name)
 }
