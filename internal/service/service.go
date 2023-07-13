@@ -16,7 +16,7 @@ type Service interface {
 	Store(ctx context.Context, name string, size uint64, object io.Reader) error // store file in storage
 	Load(ctx context.Context, name string) (io.Reader, error)                    // load file from storage
 	Nodes() (capacity uint64, cnt int)                                           // total number of nodes and their capacity
-	AddNode(capacity uint64) error
+	AddNode(capacity uint64) error                                               // add node to storage
 }
 
 type Config struct {

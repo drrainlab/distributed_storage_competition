@@ -25,10 +25,6 @@ func (f *FilePart) count(n uint64) {
 	f.txBytesCnt += n
 }
 
-func (f *FilePart) bytesStored() uint64 {
-	return f.txBytesCnt
-}
-
 func (f *FilePart) Receiver() chan<- byte {
 	return f.data
 }

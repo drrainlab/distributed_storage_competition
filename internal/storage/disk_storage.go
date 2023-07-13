@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 type DiskStorage struct {
@@ -15,41 +14,6 @@ type DiskStorage struct {
 	path  string
 	stat  *StorageStat
 	alloc allocks
-}
-
-type allocks struct {
-	allocations map[string]uint64
-	sync.RWMutex
-}
-
-func (a *allocks) lock(id string, size uint64) {
-	a.Lock()
-	defer a.Unlock()
-	_, ok := a.allocations[id]
-	if ok {
-		a.allocations[id] += size
-	} else {
-		a.allocations[id] = size
-	}
-}
-
-func (a *allocks) unlock(id string) {
-	a.Lock()
-	defer a.Unlock()
-	if _, ok := a.allocations[id]; !ok {
-		return
-	}
-	delete(a.allocations, id)
-}
-
-func (a *allocks) getSize(id string) uint64 {
-	a.Lock()
-	defer a.Unlock()
-	if size, ok := a.allocations[id]; !ok {
-		return 0
-	} else {
-		return size
-	}
 }
 
 func NewDiskStorage(id string, capacity uint64, path string) (Storage, error) {
@@ -72,6 +36,7 @@ func (s *DiskStorage) ID() string {
 	return s.id
 }
 
+// allocates space on disk (current node)
 func (s *DiskStorage) Alloc(id string, size uint64) error {
 	if s.Capacity() < size {
 		return ErrNotEnoughSpace
@@ -81,6 +46,7 @@ func (s *DiskStorage) Alloc(id string, size uint64) error {
 	return nil
 }
 
+// channel based file uploading
 func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) error {
 
 	switch {
@@ -126,6 +92,7 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 					return
 				}
 				part.count(1)
+				// if bytes transferred is equal to the size, then finish writing
 				if part.size == part.txBytesCnt {
 					part.Finish()
 				}
@@ -136,6 +103,7 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 	return nil
 }
 
+// returns file io.reader or error
 func (s *DiskStorage) Get(ctx context.Context, name string) (f io.Reader, err error) {
 	path := s.buildPath(name)
 	// check if file exists
@@ -152,6 +120,7 @@ func (s *DiskStorage) Delete(ctx context.Context, name string) error {
 	panic("not implemented") // TODO: Implement
 }
 
+// capacity of node
 func (s *DiskStorage) Capacity() uint64 {
 	return s.stat.capacity()
 }
