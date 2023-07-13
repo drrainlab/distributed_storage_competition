@@ -30,7 +30,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) Run(ctx context.Context) {
 
-	log.Println("running server at ", s.server.Addr)
+	log.Println("∴ running server at ", s.server.Addr)
+
 	err := s.server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalln("serve listener err", err)

@@ -27,13 +27,15 @@ func (h *Handler) Store(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("starting upload %s...\n", filename)
 	err := h.service.Store(r.Context(), filename, uint64(r.ContentLength), r.Body)
-
 	if err != nil {
 		h.handleErr(w, r, err)
 	}
 
-	h.replyJSON(r, w, http.StatusOK, nil)
+	log.Printf("upload of %s finished!\n", filename)
+
+	h.replyJSON(r, w, http.StatusOK, map[string]string{"status": "uploaded"})
 }
 
 func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +45,7 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("downloading %s...\n", filename)
 	reader, err := h.service.Load(r.Context(), filename)
 	if err != nil {
 		h.handleErr(w, r, err)
@@ -54,7 +57,7 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	log.Printf("download of %s finished!\n", filename)
 }
 
 func (h *Handler) replyBytes(r *http.Request, w http.ResponseWriter, status int, data []byte) {

@@ -18,8 +18,8 @@ func (h *Handler) handleErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, storage.ErrNotFound):
 		h.replyWithError(r, w, http.StatusNotFound, storage.ErrNotFound.Error())
 		return
-	case errors.Is(err, storage.ErrEmptyFile):
-		h.replyWithError(r, w, http.StatusNotFound, storage.ErrEmptyFile.Error())
+	case errors.Is(err, service.ErrEmptyFile):
+		h.replyWithError(r, w, http.StatusNotFound, service.ErrEmptyFile.Error())
 		return
 	default:
 		w.WriteHeader(http.StatusInternalServerError)

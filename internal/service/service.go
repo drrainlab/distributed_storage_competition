@@ -68,26 +68,11 @@ func (s *ObjectStorageService) AddNode(capacity uint64) error {
 	return nil
 }
 
-func (s *ObjectStorageService) Load(ctx context.Context, name string) (io.Reader, error) {
-	nodes := s.storage.getNodes(name)
-
-	var readers []io.Reader
-
-	for _, n := range nodes {
-		r, err := n.Get(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		readers = append(readers, r)
-	}
-
-	fileReader := io.MultiReader(readers...)
-
-	return fileReader, nil
-
-}
-
 func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint64, object io.Reader) error {
+
+	if size <= 0 {
+		return ErrEmptyFile
+	}
 
 	parts, err := s.prepareParts(size)
 	if err != nil {
@@ -100,9 +85,6 @@ func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint
 		return err
 	}
 
-	// capcap, nn := s.Nodes()
-	// fmt.Println("nodes after alloc: ", capcap, nn)
-
 	reader := bufio.NewReader(object)
 
 	for i := 0; i < len(parts); i++ {
@@ -111,7 +93,6 @@ func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint
 			rcv := parts[i].Receiver()
 			for j := 0; j < int(parts[i].Size()); j++ {
 				b, err := reader.ReadByte()
-				// fmt.Println("read ", string(b), " from source", " part=", i, " size=", parts[i].Size())
 				if err != nil && !errors.Is(err, io.EOF) {
 					log.Printf("error reading object: %v\n", err)
 					return
@@ -141,20 +122,22 @@ func (s *ObjectStorageService) Store(ctx context.Context, name string, size uint
 func (s *ObjectStorageService) prepareParts(size uint64) ([]*storage.FilePart, error) {
 	// get nodes number firstly, it can be expanded later
 	cap, n := s.Nodes()
-
 	if size > cap {
 		return nil, ErrNotEnoughSpace
 	}
 
-	var parts []*storage.FilePart // write will be sequential from beginning, to each node
-
-	partSize := uint64(float64(size) / float64(n))
-	residue := size % partSize
-
 	var (
+		parts           []*storage.FilePart // write will be sequential from beginning, to each node
 		mostCapacity    uint64
 		mostCapacityIdx int
 	)
+
+	partSize := uint64(float64(size) / float64(n))
+	// if size too small, just use the first node
+	if partSize == 0 {
+		n = 1
+	}
+	residue := size - partSize*uint64(n)
 
 	for i := 0; i < n; i++ {
 		// get node capacity
@@ -180,7 +163,6 @@ func (s *ObjectStorageService) prepareParts(size uint64) ([]*storage.FilePart, e
 		}
 		parts = append(parts, part)
 	}
-
 	// store residue in store with most space if not equally parted
 	if residue > 0 {
 		parts[mostCapacityIdx].AdjustSize(residue)
@@ -190,4 +172,22 @@ func (s *ObjectStorageService) prepareParts(size uint64) ([]*storage.FilePart, e
 	}
 
 	return parts, nil
+}
+
+func (s *ObjectStorageService) Load(ctx context.Context, name string) (io.Reader, error) {
+	nodes := s.storage.getNodes(name)
+	var readers []io.Reader
+
+	for _, n := range nodes {
+		r, err := n.Get(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		readers = append(readers, r)
+	}
+
+	fileReader := io.MultiReader(readers...)
+
+	return fileReader, nil
+
 }
