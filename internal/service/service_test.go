@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -67,6 +68,9 @@ func TestObjectStorageService_Store(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			defer os.RemoveAll("./storage")
+
 			s, err := NewService(tt.fields.cfg)
 			if err != nil {
 				t.Errorf("ObjectStorageService init error = %v", err)
@@ -88,6 +92,7 @@ func TestObjectStorageService_Store(t *testing.T) {
 			if string(raw) != tt.args.str {
 				t.Errorf("ObjectStorageService.Store() mismatch content")
 			}
+
 		})
 	}
 }
@@ -124,6 +129,9 @@ func TestObjectStorageService_StoreAfterNodeAdded(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			defer os.RemoveAll("./storage")
+
 			s, err := NewService(tt.fields.cfg)
 			if err != nil {
 				t.Errorf("ObjectStorageService init error = %v", err)
