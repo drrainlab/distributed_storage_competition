@@ -104,6 +104,8 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 			return
 		}
 		defer func() {
+			close(part.data)
+			close(part.err)
 			if err := f.Close(); err != nil {
 				log.Printf("closing file error: %s\n", err.Error())
 			}
@@ -117,8 +119,6 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 				defer s.cleanFailed(path, part)
 				return
 			case <-part.completed:
-				close(part.data)
-				close(part.err)
 				return
 			case b := <-part.data:
 				fmt.Println("writing ", string(b), " to ", path)
@@ -143,10 +143,11 @@ func (s *DiskStorage) Get(ctx context.Context, name string) (f io.Reader, err er
 	path := s.buildPath(name)
 	// check if file exists
 	if _, err := os.Stat(path); !os.IsExist(err) {
+		fmt.Println("looking in path: ", path)
 		return nil, ErrNotFound
 	}
 
-	return nil, nil
+	return os.Open(path)
 
 }
 
