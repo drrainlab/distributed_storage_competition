@@ -12,6 +12,7 @@ type nodes struct {
 	mu      sync.RWMutex
 }
 
+// returns overall capacity of cluster and number of nodes
 func (s *nodes) nodes() (capacity uint64, cnt int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -22,6 +23,7 @@ func (s *nodes) nodes() (capacity uint64, cnt int) {
 	return
 }
 
+// gets node capacity
 func (s *nodes) getNodeCap(i int) uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -10,11 +10,13 @@ import (
 	"log"
 )
 
+const storageDir = "storage/"
+
 type Service interface {
 	Store(ctx context.Context, name string, size uint64, object io.Reader) error // store file in storage
 	Load(ctx context.Context, name string) (io.Reader, error)                    // load file from storage
 	Nodes() (capacity uint64, cnt int)                                           // total number of nodes and their capacity
-	AddNode() error
+	AddNode(capacity uint64) error
 }
 
 type Config struct {
@@ -42,7 +44,7 @@ func NewService(cfg Config) (*ObjectStorageService, error) {
 	nodeCap := uint64(float64(cfg.Capacity) / float64(cfg.NodesNum))
 	// initializing storage nodes
 	for i := 0; i < cfg.NodesNum; i++ {
-		newNode, err := storage.NewDiskStorage(fmt.Sprintf("node-%d", i), nodeCap, "storage/")
+		newNode, err := storage.NewDiskStorage(fmt.Sprintf("node-%d", i), nodeCap, storageDir)
 		if err != nil {
 			return nil, err
 		}
@@ -54,6 +56,16 @@ func NewService(cfg Config) (*ObjectStorageService, error) {
 
 func (s *ObjectStorageService) Nodes() (capacity uint64, cnt int) {
 	return s.storage.nodes()
+}
+
+func (s *ObjectStorageService) AddNode(capacity uint64) error {
+	_, n := s.storage.nodes()
+	newNode, err := storage.NewDiskStorage(fmt.Sprintf("node-%d", n+1), capacity, storageDir)
+	if err != nil {
+		return err
+	}
+	s.storage.addNode(newNode)
+	return nil
 }
 
 func (s *ObjectStorageService) Load(ctx context.Context, name string) (io.Reader, error) {

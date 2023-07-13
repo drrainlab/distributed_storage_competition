@@ -23,7 +23,7 @@ func main() {
 
 	fmt.Println(objectStorage.Nodes())
 
-	strR := strings.NewReader("111111222222333333444444555555666666")
+	strR := strings.NewReader(`When doneCh is closed above, the function asyncReader will return. The goroutine we created will also return the next time it evaluates the condition in the for loop. But, what if the goroutine is blocking on r.Read()? Then, we essentially have leaked a goroutine. We’re stuck until the reader unblocks.`)
 
 	ctx := context.Background()
 	if err := objectStorage.Store(ctx, "test", uint64(strR.Len()), strR); err != nil {

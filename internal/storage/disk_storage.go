@@ -97,7 +97,6 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 
 	// start writing in background
 	go func() {
-		fmt.Println("creating new file name = ", name, " in path = ", path)
 		f, err := os.Create(path)
 		if err != nil {
 			part.err <- err
@@ -114,14 +113,12 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 		for {
 			select {
 			case <-ctx.Done():
-				log.Printf("ctx finished: %s\n", ctx.Err())
 				part.err <- ctx.Err()
 				defer s.cleanFailed(path, part)
 				return
 			case <-part.completed:
 				return
 			case b := <-part.data:
-				fmt.Println("writing ", string(b), " to ", path)
 				_, err := f.Write([]byte{b})
 				if err != nil {
 					defer s.cleanFailed(path, part)
@@ -142,13 +139,13 @@ func (s *DiskStorage) Store(ctx context.Context, name string, part *FilePart) er
 func (s *DiskStorage) Get(ctx context.Context, name string) (f io.Reader, err error) {
 	path := s.buildPath(name)
 	// check if file exists
-	if _, err := os.Stat(path); !os.IsExist(err) {
-		fmt.Println("looking in path: ", path)
+	if _, err := os.Stat(path); err != nil && !os.IsExist(err) {
+		fmt.Println("looking in path: ", path, err)
 		return nil, ErrNotFound
 	}
 
+	// NOTE: didn't make cancelable reader for simplicity
 	return os.Open(path)
-
 }
 
 func (s *DiskStorage) Delete(ctx context.Context, name string) error {
