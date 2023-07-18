@@ -146,8 +146,7 @@ func (s *ObjectStorageService) prepareParts(size uint64) ([]*storage.FilePart, e
 		var part *storage.FilePart
 
 		if c >= mostCapacity {
-			mostCapacity = c
-			mostCapacityIdx = i
+			mostCapacity, mostCapacityIdx = c, i
 		}
 
 		if c >= partSize {
